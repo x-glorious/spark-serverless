@@ -36,5 +36,5 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 
-./api/*
+api
 !./api/build-trigger.ts
