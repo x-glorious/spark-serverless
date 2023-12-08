@@ -1,5 +1,8 @@
 import { $ } from 'execa'
 
-(async () => {
-  await $`npm run pre:build`
-})()
+if(process.env.VERCEL) {
+  (async () => {
+    await $`npm run pre:build`
+  })()
+}
+
