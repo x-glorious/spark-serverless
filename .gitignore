@@ -37,4 +37,4 @@ yarn-error.log*
 *.tsbuildinfo
 
 ./api/*
-!./api/test.ts
+!./api/build-trigger.ts
