@@ -1,3 +1,8 @@
 import { $ } from 'execa'
+import Path from 'path'
 
-await $`tsc && tsc-alias`
+(async () => {
+  await $({
+    cwd: Path.join(process.cwd(), '../')
+  })`npm run before:build`
+})()

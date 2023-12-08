@@ -1,6 +1,7 @@
 {
   "repository": "https://github.com/vercel/examples.git",
   "license": "MIT",
+  "type": "module",
   "private": true,
   "devDependencies": {
     "@types/node": "^17.0.42",
@@ -11,6 +12,7 @@
     "typescript": "^4.7.3"
   },
   "scripts": {
-    "pre:compile": "concurrently \"tsc -w\" \"tsc-alias -w\""
+    "before:dev": "concurrently \"tsc -w\" \"tsc-alias -w\"",
+    "before:build": "tsc && tsc-alias"
   }
 }
