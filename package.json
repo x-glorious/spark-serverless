@@ -12,7 +12,8 @@
     "typescript": "^4.7.3"
   },
   "scripts": {
-    "before:dev": "concurrently \"tsc -w\" \"tsc-alias -w\"",
-    "before:build": "tsc && tsc-alias"
+    "init:build-env": "npm i && node ./scripts/pre-build.js",
+    "pre:dev": "concurrently \"tsc -w\" \"tsc-alias -w\"",
+    "pre:build": "tsc && tsc-alias"
   }
 }
