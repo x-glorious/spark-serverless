@@ -4,14 +4,18 @@
   "type": "module",
   "private": true,
   "devDependencies": {
+    "@rollup/plugin-commonjs": "^25.0.7",
+    "@rollup/plugin-node-resolve": "^15.2.3",
     "@types/node": "^17.0.42",
     "@vercel/node": "^2.9.6",
     "concurrently": "^8.2.2",
-    "tsc-alias": "^1.8.8",
+    "fast-glob": "^3.3.2",
+    "rollup": "^4.7.0",
+    "rollup-plugin-typescript2": "^0.36.0",
     "typescript": "^4.7.3"
   },
   "scripts": {
-    "pre:dev": "concurrently \"tsc -w\" \"tsc-alias -w\"",
-    "compile:publish": "rm -rf api && tsc && tsc-alias"
+    "pre:dev": "rm -rf api && rollup -cw",
+    "compile:publish": "rm -rf api && rollup -c"
   }
 }
