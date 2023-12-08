@@ -11,6 +11,6 @@
   },
   "scripts": {
     "dev": "concurrently \"tsc -w\" \"tsc-alias -w\"",
-    "vercel-build": "tsc && tsc-alias"
+    "build": "tsc && tsc-alias"
   }
 }
