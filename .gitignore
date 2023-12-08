@@ -38,4 +38,4 @@ yarn-error.log*
 
 api
 
-!api/test
+!api/test.ts
