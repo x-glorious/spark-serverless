@@ -12,6 +12,6 @@
   },
   "scripts": {
     "pre:dev": "concurrently \"tsc -w\" \"tsc-alias -w\"",
-    "compile:publish": "tsc && tsc-alias"
+    "compile:publish": "rm -rf api && tsc && tsc-alias"
   }
 }
