@@ -8,35 +8,41 @@ import { fileURLToPath } from 'node:url';
 
 const { devDependencies = {}, dependencies = {} } = JSON.parse(Fs.readFileSync(Path.join(process.cwd(), 'package.json')).toString())
 
-export default {
-  input: Object.fromEntries( Fg.sync('./src/**/*.ts', {
-      ignore: './src/.global/**/*'
-      }
-    ).map(file => [
-      // This remove `src/` as well as the file extension from each
-      // file, so e.g. src/nested/foo.js becomes nested/foo
-      Path.relative(
-        'src',
-        file.slice(0, file.length - Path.extname(file).length)
-      ),
-      // This expands the relative paths to absolute paths, so e.g.
-      // src/nested/foo becomes /project/src/nested/foo.js
-      fileURLToPath(new URL(file, import.meta.url))
-    ])
+const inputs = Fg.sync('./src/**/*.ts', {
+  ignore: './src/global/**/*'
+  }
+).map(file => [
+  // This remove `src/` as well as the file extension from each
+  // file, so e.g. src/nested/foo.js becomes nested/foo
+  Path.relative(
+    'src',
+    file.slice(0, file.length - Path.extname(file).length)
   ),
-  external: [...Object.keys(devDependencies), ...Object.keys(dependencies)],
-  output: [
-    {
-      dir: 'api',
-      format: 'es',
-      strict: false
+  // This expands the relative paths to absolute paths, so e.g.
+  // src/nested/foo becomes /project/src/nested/foo.js
+  fileURLToPath(new URL(file, import.meta.url))
+])
+
+export default inputs.map(([name, filePath]) => (
+  {
+    input: {
+      [name]: filePath
     },
-  ],
-  plugins: [
-    commonjs(),
-    nodeResolve(),
-    typescript({
-      useTsconfigDeclarationDir: true,
-    })
-  ],
-}
+    external: [...Object.keys(devDependencies), ...Object.keys(dependencies)],
+    output: [
+      {
+        dir: 'api',
+        format: 'es',
+        strict: false
+      },
+    ],
+    plugins: [
+      commonjs(),
+      nodeResolve(),
+      typescript({
+        useTsconfigDeclarationDir: true,
+      })
+    ],
+  }
+))
+
