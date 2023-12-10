@@ -5,7 +5,6 @@ import Jwt from 'jsonwebtoken'
 import { getEnv } from '@/global/utils/env'
 import Cookie from 'cookie'
 import { clientHost } from '@/global/utils/client';
-import Url from 'url';
 
 const getGithubUser = async (code: string) => {
   // const tokenResponse = await axios({
@@ -53,7 +52,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   return res.setHeader(
     'Set-Cookie',
     Cookie.serialize('authorization', token, {
-      domain: Url.parse(clientHost).hostname!,
       httpOnly: true,
       maxAge: 60 * 60 * 24 * 7, // 1 week
       path: '/'

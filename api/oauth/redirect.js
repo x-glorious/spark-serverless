@@ -1,6 +1,5 @@
 import Jwt from 'jsonwebtoken';
 import Cookie from 'cookie';
-import Url from 'url';
 
 var OauthPlatform;
 (function (OauthPlatform) {
@@ -52,7 +51,6 @@ async function handler(req, res) {
         }
     }, getEnv().JWT_KEY);
     return res.setHeader('Set-Cookie', Cookie.serialize('authorization', token, {
-        domain: Url.parse(clientHost).hostname,
         httpOnly: true,
         maxAge: 60 * 60 * 24 * 7,
         path: '/'
