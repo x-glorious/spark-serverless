@@ -23,6 +23,7 @@ export const auth: Plugin = {
 
     }
 
+    console.error('222')
     return res.status(401).send('unauthorized')
   }
 }
