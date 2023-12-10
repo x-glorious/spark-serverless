@@ -7,8 +7,6 @@ export const handlerBuilder = (
   plugins: Plugin[]
 ) => {
   return async (req: VercelRequest, res: VercelResponse) => {
-    console.error('enter 1')
-
     const tasks = [...plugins, {run: handler}]
     const context = {}
     let stopIndex = -1
