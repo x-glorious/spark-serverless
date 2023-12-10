@@ -43,13 +43,24 @@ const auth = {
         }
         catch (_e) {
         }
-        return res.status(401).json({});
+        console.error('222');
+        return res.status(401).send('unauthorized');
+    }
+};
+
+const cors = {
+    run: async (req, res, context) => {
+        console.log(req.method);
+        if (req.method === 'OPTIONS') {
+            return res.status(200).send('ok');
+        }
+        return undefined;
     }
 };
 
 async function handler(req, res, context) {
     return res.json(context);
 }
-var brief = handlerBuilder(handler, [auth]);
+var brief = handlerBuilder(handler, [cors, auth]);
 
 export { brief as default };
