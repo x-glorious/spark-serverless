@@ -1,7 +1,7 @@
 import Jwt from 'jsonwebtoken'
-import { Plugin } from "@/global/types/plugin";
-import { getEnv } from '@/global/utils/env';
-import { OauthPlatform } from '@/global/types/oauth';
+import { Plugin } from '@/global/types/plugin'
+import { getEnv } from '@/global/utils/env'
+import { OauthPlatform } from '@/global/types/oauth'
 
 export interface AuthPluginContext {
   user?: {
@@ -15,14 +15,16 @@ export const auth: Plugin = {
     const authorization = req.headers['x-authorization'] as string
 
     try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { user } = Jwt.verify(authorization, getEnv().JWT_KEY) as any
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       context.user = user as any
 
       return undefined
-    }catch(_e) {
-
+    } catch (_e) {
+      // default
     }
 
     return res.status(401).end()
-  }
+  },
 }

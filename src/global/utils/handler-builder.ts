@@ -1,22 +1,25 @@
-import { Plugin, PluginContext } from "@/global/types/plugin";
-import { VercelRequest, VercelResponse } from "@vercel/node";
-
+import { Plugin, PluginContext } from '@/global/types/plugin'
+import { VercelRequest, VercelResponse } from '@vercel/node'
 
 export const handlerBuilder = (
-  handler: (req: VercelRequest, res: VercelResponse, context: PluginContext) => Promise<VercelResponse>,
-  plugins: Plugin[]
+  handler: (
+    req: VercelRequest,
+    res: VercelResponse,
+    context: PluginContext,
+  ) => Promise<VercelResponse>,
+  plugins: Plugin[],
 ) => {
   return async (req: VercelRequest, res: VercelResponse) => {
-    const tasks = [...plugins, {run: handler}]
+    const tasks = [...plugins, { run: handler }]
     const context = {}
     let stopIndex = -1
     let result: VercelResponse = res
 
     // forward
-    for(const task of tasks) {
+    for (const task of tasks) {
       const taskResult = await task.run?.(req, res, context)
 
-      if(taskResult) {
+      if (taskResult) {
         stopIndex++
         result = taskResult
         break
@@ -24,10 +27,10 @@ export const handlerBuilder = (
     }
 
     // backward
-    for(const task of tasks.slice(0, stopIndex).reverse()) {
+    for (const task of tasks.slice(0, stopIndex).reverse()) {
       const taskResult = await task.after?.(req, result, context)
 
-      if(taskResult) {
+      if (taskResult) {
         result = taskResult
       }
     }

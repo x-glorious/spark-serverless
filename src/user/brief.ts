@@ -4,7 +4,11 @@ import { auth } from '@/global/plugins/auth'
 import { PluginContext } from '@/global/types/plugin'
 import { cors } from '@/global/plugins/cors'
 
-async function handler(req: VercelRequest, res: VercelResponse, context: PluginContext) {
+async function handler(
+  req: VercelRequest,
+  res: VercelResponse,
+  context: PluginContext,
+) {
   return res.json(context)
 }
 

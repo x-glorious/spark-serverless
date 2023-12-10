@@ -1,3 +1,3 @@
 export enum OauthPlatform {
-  github = 'github'
+  github = 'github',
 }

@@ -1,6 +1,6 @@
 export enum RuntimeEnv {
   dev = 'development',
-  pro = 'production'
+  pro = 'production',
 }
 
 export interface Env {
