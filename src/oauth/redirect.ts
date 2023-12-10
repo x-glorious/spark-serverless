@@ -51,7 +51,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   return res.setHeader(
     'Set-Cookie',
     Cookie.serialize('authorization', token, {
-      secure: true,
       httpOnly: true,
       maxAge: 60 * 60 * 24 * 7, // 1 week
       path: '/'
