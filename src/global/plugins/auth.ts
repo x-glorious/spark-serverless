@@ -12,7 +12,7 @@ export interface AuthPluginContext {
 
 export const auth: Plugin = {
   run: async (req, res, context) => {
-    const { authorization } = req.cookies
+    const authorization = req.headers['x-authorization'] as string
 
     try {
       const { user } = Jwt.verify(authorization, getEnv().JWT_KEY) as any
@@ -23,7 +23,6 @@ export const auth: Plugin = {
 
     }
 
-    console.error('222')
-    return res.status(401).send('unauthorized')
+    return res.status(401).end()
   }
 }

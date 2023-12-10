@@ -35,7 +35,7 @@ const getEnv = () => process.env;
 
 const auth = {
     run: async (req, res, context) => {
-        const { authorization } = req.cookies;
+        const authorization = req.headers['x-authorization'];
         try {
             const { user } = Jwt.verify(authorization, getEnv().JWT_KEY);
             context.user = user;
@@ -43,16 +43,14 @@ const auth = {
         }
         catch (_e) {
         }
-        console.error('222');
-        return res.status(401).send('unauthorized');
+        return res.status(401).end();
     }
 };
 
 const cors = {
     run: async (req, res, context) => {
-        console.log(req.method);
         if (req.method === 'OPTIONS') {
-            return res.status(200).send('ok');
+            return res.status(200).end();
         }
         return undefined;
     }
