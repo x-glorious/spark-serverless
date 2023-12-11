@@ -4,8 +4,10 @@ import axios from 'axios'
 import Jwt from 'jsonwebtoken'
 import { getEnv } from '@/global/utils/env'
 import { clientHost } from '@/global/utils/client'
+import { UserDetail } from '@/global/db/user'
+import { db } from '@/global/db'
 
-const getGithubUser = async (code: string) => {
+const getGithubUser = async (code: string): Promise<UserDetail> => {
   const tokenResponse = await axios({
     method: 'post',
     url:
@@ -29,22 +31,44 @@ const getGithubUser = async (code: string) => {
     },
   })
 
-  return result.data.id
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { id, name, avatar_url } = result.data as any
+
+  return {
+    identifier: id,
+    name,
+    avatar: avatar_url,
+    platform: OauthPlatform.github,
+  }
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   const { platform, code, back_to } = req.query
 
-  let identifier: string | undefined
+  let userBrief: UserDetail | undefined
 
   if (platform === OauthPlatform.github) {
-    identifier = await getGithubUser(code as string)
+    userBrief = await getGithubUser(code as string)
+  }
+
+  const cacheBrief = await db.user.detail.get(
+    userBrief!.platform,
+    userBrief!.identifier,
+  )
+
+  // do not have any cache
+  if (!cacheBrief) {
+    await db.user.detail.set(
+      userBrief!.platform,
+      userBrief!.identifier,
+      userBrief!,
+    )
   }
 
   const token = Jwt.sign(
     {
       user: {
-        identifier,
+        identifier: userBrief?.identifier,
         platform,
       },
     },

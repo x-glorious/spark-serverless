@@ -1,5 +1,6 @@
 import axios from 'axios';
 import Jwt from 'jsonwebtoken';
+import { kv } from '@vercel/kv';
 
 var OauthPlatform;
 (function (OauthPlatform) {
@@ -16,6 +17,34 @@ const getEnv = () => process.env;
 const clientHost = getEnv().VERCEL_ENV === RuntimeEnv.dev
     ? 'http://localhost:22333'
     : 'https://spark-sea.vercel.app';
+
+const kvKey = (keys) => (typeof keys === 'string' ? [keys] : keys).join(':');
+
+var DbUserScope;
+(function (DbUserScope) {
+    /**
+     * detail of user
+     */
+    DbUserScope["detail"] = "detail";
+})(DbUserScope || (DbUserScope = {}));
+const getKey = (scope, platform, identifier) => {
+    return kvKey(['user', scope, platform, identifier]);
+};
+const detail = {
+    get: async (platform, identifier) => {
+        return await kv.get(getKey(DbUserScope.detail, platform, identifier));
+    },
+    set: async (platform, identifier, value) => {
+        return await kv.set(getKey(DbUserScope.detail, platform, identifier), value);
+    },
+};
+const user = {
+    detail,
+};
+
+const db = Object.freeze({
+    user,
+});
 
 const getGithubUser = async (code) => {
     const tokenResponse = await axios({
@@ -37,17 +66,29 @@ const getGithubUser = async (code) => {
             Authorization: `token ${accessToken}`,
         },
     });
-    return result.data.id;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { id, name, avatar_url } = result.data;
+    return {
+        identifier: id,
+        name,
+        avatar: avatar_url,
+        platform: OauthPlatform.github,
+    };
 };
 async function handler(req, res) {
     const { platform, code, back_to } = req.query;
-    let identifier;
+    let userBrief;
     if (platform === OauthPlatform.github) {
-        identifier = await getGithubUser(code);
+        userBrief = await getGithubUser(code);
+    }
+    const cacheBrief = await db.user.detail.get(userBrief.platform, userBrief.identifier);
+    // do not have any cache
+    if (!cacheBrief) {
+        await db.user.detail.set(userBrief.platform, userBrief.identifier, userBrief);
     }
     const token = Jwt.sign({
         user: {
-            identifier,
+            identifier: userBrief?.identifier,
             platform,
         },
     }, getEnv().JWT_KEY);

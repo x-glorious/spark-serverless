@@ -1,4 +1,5 @@
 import Jwt from 'jsonwebtoken';
+import { kv } from '@vercel/kv';
 
 const handlerBuilder = (handler, plugins) => {
     return async (req, res) => {
@@ -59,9 +60,37 @@ const cors = {
     },
 };
 
-async function handler(req, res, context) {
-    return res.json(context);
-}
-var brief = handlerBuilder(handler, [cors, auth]);
+const kvKey = (keys) => (typeof keys === 'string' ? [keys] : keys).join(':');
 
-export { brief as default };
+var DbUserScope;
+(function (DbUserScope) {
+    /**
+     * detail of user
+     */
+    DbUserScope["detail"] = "detail";
+})(DbUserScope || (DbUserScope = {}));
+const getKey = (scope, platform, identifier) => {
+    return kvKey(['user', scope, platform, identifier]);
+};
+const detail$1 = {
+    get: async (platform, identifier) => {
+        return await kv.get(getKey(DbUserScope.detail, platform, identifier));
+    },
+    set: async (platform, identifier, value) => {
+        return await kv.set(getKey(DbUserScope.detail, platform, identifier), value);
+    },
+};
+const user = {
+    detail: detail$1,
+};
+
+const db = Object.freeze({
+    user,
+});
+
+async function handler(req, res, context) {
+    return res.json(await db.user.detail.get(context.user.platform, context.user.identifier));
+}
+var detail = handlerBuilder(handler, [cors, auth]);
+
+export { detail as default };
