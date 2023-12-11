@@ -1,6 +1,7 @@
 import axios from 'axios';
 import Jwt from 'jsonwebtoken';
 import { kv } from '@vercel/kv';
+import Qs from 'qs';
 
 var OauthPlatform;
 (function (OauthPlatform) {
@@ -50,9 +51,11 @@ const getGithubUser = async (code) => {
     const tokenResponse = await axios({
         method: 'post',
         url: 'https://github.com/login/oauth/access_token?' +
-            `client_id=${getEnv().OAUTH_GITHUB_CLIENT_ID}&` +
-            `client_secret=${getEnv().OAUTH_GITHUB_CLIENT_SECRET}&` +
-            `code=${code}`,
+            Qs.stringify({
+                client_id: getEnv().OAUTH_GITHUB_CLIENT_ID,
+                client_secret: getEnv().OAUTH_GITHUB_CLIENT_SECRET,
+                code,
+            }),
         headers: {
             accept: 'application/json',
         },
@@ -92,10 +95,11 @@ async function handler(req, res) {
             platform,
         },
     }, getEnv().JWT_KEY);
-    const redirectUrl = clientHost +
-        '/user/login' +
-        `?back=${decodeURIComponent(back_to)}` +
-        `&token=${token}`;
+    const redirectUrl = `${clientHost}/user/login?` +
+        Qs.stringify({
+            back: back_to,
+            token,
+        });
     return res.redirect(redirectUrl);
 }
 

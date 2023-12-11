@@ -6,15 +6,18 @@ import { getEnv } from '@/global/utils/env'
 import { clientHost } from '@/global/utils/client'
 import { UserDetail } from '@/global/db/user'
 import { db } from '@/global/db'
+import Qs from 'qs'
 
 const getGithubUser = async (code: string): Promise<UserDetail> => {
   const tokenResponse = await axios({
     method: 'post',
     url:
       'https://github.com/login/oauth/access_token?' +
-      `client_id=${getEnv().OAUTH_GITHUB_CLIENT_ID}&` +
-      `client_secret=${getEnv().OAUTH_GITHUB_CLIENT_SECRET}&` +
-      `code=${code}`,
+      Qs.stringify({
+        client_id: getEnv().OAUTH_GITHUB_CLIENT_ID,
+        client_secret: getEnv().OAUTH_GITHUB_CLIENT_SECRET,
+        code,
+      }),
     headers: {
       accept: 'application/json',
     },
@@ -76,10 +79,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   )
 
   const redirectUrl =
-    clientHost +
-    '/user/login' +
-    `?back=${decodeURIComponent(back_to as string)}` +
-    `&token=${token}`
+    `${clientHost}/user/login?` +
+    Qs.stringify({
+      back: back_to,
+      token,
+    })
 
   return res.redirect(redirectUrl)
 }
