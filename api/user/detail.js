@@ -1,3 +1,4 @@
+import { omit } from 'lodash-es';
 import Jwt from 'jsonwebtoken';
 import { kv } from '@vercel/kv';
 
@@ -65,22 +66,37 @@ const kvKey = (keys) => (typeof keys === 'string' ? [keys] : keys).join(':');
 var DbUserScope;
 (function (DbUserScope) {
     /**
+     * oauth map
+     * platform:identifier -> token
+     */
+    DbUserScope["oauth"] = "oauth";
+    /**
      * detail of user
      */
     DbUserScope["detail"] = "detail";
 })(DbUserScope || (DbUserScope = {}));
-const getKey = (scope, platform, identifier) => {
-    return kvKey(['user', scope, platform, identifier]);
+const getKey = (scope, ...args) => {
+    return kvKey(['user', scope, ...args]);
 };
-const detail$1 = {
+const oauth = {
     get: async (platform, identifier) => {
-        return await kv.get(getKey(DbUserScope.detail, platform, identifier));
+        return await kv.get(getKey(DbUserScope.oauth, platform, identifier));
     },
     set: async (platform, identifier, value) => {
-        return await kv.set(getKey(DbUserScope.detail, platform, identifier), value);
+        return await kv.set(getKey(DbUserScope.oauth, platform, identifier), value);
     },
 };
+const detail$1 = {
+    get: async (id) => {
+        return await kv.get(getKey(DbUserScope.detail, id));
+    },
+    set: async (id, value) => {
+        return await kv.set(getKey(DbUserScope.detail, id), value);
+    },
+};
+// todo oauth:platform:id -> nanoid(), user info
 const user = {
+    oauth,
     detail: detail$1,
 };
 
@@ -89,7 +105,10 @@ const db = Object.freeze({
 });
 
 async function handler(req, res, context) {
-    return res.json(await db.user.detail.get(context.user.platform, context.user.identifier));
+    const result = await db.user.detail.get(context.user.id);
+    return result
+        ? res.json(omit(result, ['platformIdentifier']))
+        : res.status(401).end();
 }
 var detail = handlerBuilder(handler, [cors, auth]);
 

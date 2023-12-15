@@ -1,5 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { OauthPlatform } from '@/global/types/oauth'
+import { nanoid } from 'nanoid'
 import axios from 'axios'
 import Jwt from 'jsonwebtoken'
 import { getEnv } from '@/global/utils/env'
@@ -8,7 +9,7 @@ import { UserDetail } from '@/global/db/user'
 import { db } from '@/global/db'
 import Qs from 'qs'
 
-const getGithubUser = async (code: string): Promise<UserDetail> => {
+const getGithubUser = async (code: string): Promise<Omit<UserDetail, 'id'>> => {
   const tokenResponse = await axios({
     method: 'post',
     url:
@@ -25,7 +26,7 @@ const getGithubUser = async (code: string): Promise<UserDetail> => {
 
   const accessToken = tokenResponse.data.access_token
 
-  const result = await axios({
+  const userResponse = await axios({
     method: 'get',
     url: `https://api.github.com/user`,
     headers: {
@@ -35,12 +36,26 @@ const getGithubUser = async (code: string): Promise<UserDetail> => {
   })
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { id, name, avatar_url } = result.data as any
+  const { id, name, avatar_url } = userResponse.data as any
+
+  const emailResult = await axios({
+    method: 'get',
+    url: `https://api.github.com/user/emails`,
+    headers: {
+      accept: 'application/json',
+      Authorization: `token ${accessToken}`,
+    },
+  })
+
+  const { email = '' } =
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    emailResult.data.find((item: any) => item.primary) || {}
 
   return {
-    identifier: id,
+    platformIdentifier: id,
     name,
     avatar: avatar_url,
+    email,
     platform: OauthPlatform.github,
   }
 }
@@ -48,31 +63,29 @@ const getGithubUser = async (code: string): Promise<UserDetail> => {
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   const { platform, code, back_to } = req.query
 
-  let userBrief: UserDetail | undefined
+  let userBrief: Omit<UserDetail, 'id'> | undefined
 
   if (platform === OauthPlatform.github) {
     userBrief = await getGithubUser(code as string)
   }
 
-  const cacheBrief = await db.user.detail.get(
+  let id = await db.user.oauth.get(
     userBrief!.platform,
-    userBrief!.identifier,
+    userBrief!.platformIdentifier,
   )
 
-  // do not have any cache
-  if (!cacheBrief) {
-    await db.user.detail.set(
-      userBrief!.platform,
-      userBrief!.identifier,
-      userBrief!,
-    )
+  if (!id) {
+    id = nanoid()
+    await db.user.detail.set(id, {
+      ...userBrief!,
+      id,
+    })
   }
 
   const token = Jwt.sign(
     {
       user: {
-        identifier: userBrief?.identifier,
-        platform,
+        id,
       },
     },
     getEnv().JWT_KEY,

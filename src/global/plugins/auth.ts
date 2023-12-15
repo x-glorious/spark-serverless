@@ -1,12 +1,10 @@
 import Jwt from 'jsonwebtoken'
 import { Plugin } from '@/global/types/plugin'
 import { getEnv } from '@/global/utils/env'
-import { OauthPlatform } from '@/global/types/oauth'
 
 export interface AuthPluginContext {
   user?: {
-    identifier: string
-    platform: OauthPlatform
+    id: string
   }
 }
 

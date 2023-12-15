@@ -1,4 +1,5 @@
 import { handlerBuilder } from '@/global/utils/handler-builder'
+import { omit } from 'lodash-es'
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { auth } from '@/global/plugins/auth'
 import { PluginContext } from '@/global/types/plugin'
@@ -10,9 +11,11 @@ async function handler(
   res: VercelResponse,
   context: PluginContext,
 ) {
-  return res.json(
-    await db.user.detail.get(context.user!.platform, context.user!.identifier),
-  )
+  const result = await db.user.detail.get(context.user!.id)
+
+  return result
+    ? res.json(omit(result, ['platformIdentifier']))
+    : res.status(401).end()
 }
 
 export default handlerBuilder(handler, [cors, auth])

@@ -1,3 +1,4 @@
+import { nanoid } from 'nanoid';
 import axios from 'axios';
 import Jwt from 'jsonwebtoken';
 import { kv } from '@vercel/kv';
@@ -24,22 +25,37 @@ const kvKey = (keys) => (typeof keys === 'string' ? [keys] : keys).join(':');
 var DbUserScope;
 (function (DbUserScope) {
     /**
+     * oauth map
+     * platform:identifier -> token
+     */
+    DbUserScope["oauth"] = "oauth";
+    /**
      * detail of user
      */
     DbUserScope["detail"] = "detail";
 })(DbUserScope || (DbUserScope = {}));
-const getKey = (scope, platform, identifier) => {
-    return kvKey(['user', scope, platform, identifier]);
+const getKey = (scope, ...args) => {
+    return kvKey(['user', scope, ...args]);
 };
-const detail = {
+const oauth = {
     get: async (platform, identifier) => {
-        return await kv.get(getKey(DbUserScope.detail, platform, identifier));
+        return await kv.get(getKey(DbUserScope.oauth, platform, identifier));
     },
     set: async (platform, identifier, value) => {
-        return await kv.set(getKey(DbUserScope.detail, platform, identifier), value);
+        return await kv.set(getKey(DbUserScope.oauth, platform, identifier), value);
     },
 };
+const detail = {
+    get: async (id) => {
+        return await kv.get(getKey(DbUserScope.detail, id));
+    },
+    set: async (id, value) => {
+        return await kv.set(getKey(DbUserScope.detail, id), value);
+    },
+};
+// todo oauth:platform:id -> nanoid(), user info
 const user = {
+    oauth,
     detail,
 };
 
@@ -61,7 +77,7 @@ const getGithubUser = async (code) => {
         },
     });
     const accessToken = tokenResponse.data.access_token;
-    const result = await axios({
+    const userResponse = await axios({
         method: 'get',
         url: `https://api.github.com/user`,
         headers: {
@@ -70,11 +86,23 @@ const getGithubUser = async (code) => {
         },
     });
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { id, name, avatar_url } = result.data;
+    const { id, name, avatar_url } = userResponse.data;
+    const emailResult = await axios({
+        method: 'get',
+        url: `https://api.github.com/user/emails`,
+        headers: {
+            accept: 'application/json',
+            Authorization: `token ${accessToken}`,
+        },
+    });
+    const { email = '' } = 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    emailResult.data.find((item) => item.primary) || {};
     return {
-        identifier: id,
+        platformIdentifier: id,
         name,
         avatar: avatar_url,
+        email,
         platform: OauthPlatform.github,
     };
 };
@@ -84,15 +112,17 @@ async function handler(req, res) {
     if (platform === OauthPlatform.github) {
         userBrief = await getGithubUser(code);
     }
-    const cacheBrief = await db.user.detail.get(userBrief.platform, userBrief.identifier);
-    // do not have any cache
-    if (!cacheBrief) {
-        await db.user.detail.set(userBrief.platform, userBrief.identifier, userBrief);
+    let id = await db.user.oauth.get(userBrief.platform, userBrief.platformIdentifier);
+    if (!id) {
+        id = nanoid();
+        await db.user.detail.set(id, {
+            ...userBrief,
+            id,
+        });
     }
     const token = Jwt.sign({
         user: {
-            identifier: userBrief?.identifier,
-            platform,
+            id,
         },
     }, getEnv().JWT_KEY);
     const redirectUrl = `${clientHost}/user/login?` +
