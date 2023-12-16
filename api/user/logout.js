@@ -106,6 +106,7 @@ const auth = {
         try {
             const { user, securityToken } = Jwt.verify(authorization, getEnv().JWT_KEY);
             const cacheSecurityToken = await db.oauth.securityToken.get(user.id);
+            // check security token to disable abandoned jwt token
             if (cacheSecurityToken !== securityToken) {
                 return res.status(401).end();
             }

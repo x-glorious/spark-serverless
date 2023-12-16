@@ -23,6 +23,7 @@ export const auth: Plugin = {
 
       const cacheSecurityToken = await db.oauth.securityToken.get(user.id)
 
+      // check security token to disable abandoned jwt token
       if (cacheSecurityToken !== securityToken) {
         return res.status(401).end()
       }
