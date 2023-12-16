@@ -76,17 +76,29 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   if (!id) {
     id = nanoid()
+    // save oauth link to id
+    await db.user.oauth.set(
+      userBrief!.platform,
+      userBrief!.platformIdentifier,
+      id,
+    )
+    // save user detail
     await db.user.detail.set(id, {
       ...userBrief!,
       id,
     })
   }
 
+  // set/refresh securityToken
+  const securityToken = nanoid()
+  await db.oauth.securityToken.set(id, securityToken)
+
   const token = Jwt.sign(
     {
       user: {
         id,
       },
+      securityToken,
     },
     getEnv().JWT_KEY,
   )

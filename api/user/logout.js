@@ -1,4 +1,3 @@
-import { omit } from 'lodash-es';
 import Jwt from 'jsonwebtoken';
 import { kv } from '@vercel/kv';
 
@@ -60,7 +59,7 @@ const oauth$1 = {
         return await kv.set(getKey$1(DbUserScope.oauth, platform, identifier), value);
     },
 };
-const detail$1 = {
+const detail = {
     get: async (id) => {
         return await kv.get(getKey$1(DbUserScope.detail, id));
     },
@@ -71,7 +70,7 @@ const detail$1 = {
 // todo oauth:platform:id -> nanoid(), user info
 const user = {
     oauth: oauth$1,
-    detail: detail$1,
+    detail,
 };
 
 var DbAuthScope;
@@ -131,11 +130,10 @@ const cors = {
 };
 
 async function handler(req, res, context) {
-    const result = await db.user.detail.get(context.user.id);
-    return result
-        ? res.json(omit(result, ['platformIdentifier']))
-        : res.status(401).end();
+    // clear securityToken to disable old jwt token
+    const result = await db.oauth.securityToken.set(context.user.id, '');
+    return res.status(result ? 200 : 500).end();
 }
-var detail = handlerBuilder(handler, [cors, auth]);
+var logout = handlerBuilder(handler, [cors, auth]);
 
-export { detail as default };
+export { logout as default };

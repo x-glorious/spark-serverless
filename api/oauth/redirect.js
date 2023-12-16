@@ -34,33 +34,56 @@ var DbUserScope;
      */
     DbUserScope["detail"] = "detail";
 })(DbUserScope || (DbUserScope = {}));
-const getKey = (scope, ...args) => {
+const getKey$1 = (scope, ...args) => {
     return kvKey(['user', scope, ...args]);
 };
-const oauth = {
+const oauth$1 = {
     get: async (platform, identifier) => {
-        return await kv.get(getKey(DbUserScope.oauth, platform, identifier));
+        return await kv.get(getKey$1(DbUserScope.oauth, platform, identifier));
     },
     set: async (platform, identifier, value) => {
-        return await kv.set(getKey(DbUserScope.oauth, platform, identifier), value);
+        return await kv.set(getKey$1(DbUserScope.oauth, platform, identifier), value);
     },
 };
 const detail = {
     get: async (id) => {
-        return await kv.get(getKey(DbUserScope.detail, id));
+        return await kv.get(getKey$1(DbUserScope.detail, id));
     },
     set: async (id, value) => {
-        return await kv.set(getKey(DbUserScope.detail, id), value);
+        return await kv.set(getKey$1(DbUserScope.detail, id), value);
     },
 };
 // todo oauth:platform:id -> nanoid(), user info
 const user = {
-    oauth,
+    oauth: oauth$1,
     detail,
+};
+
+var DbAuthScope;
+(function (DbAuthScope) {
+    /**
+     * user id -> securityToken
+     */
+    DbAuthScope["securityToken"] = "security-token";
+})(DbAuthScope || (DbAuthScope = {}));
+const getKey = (scope, ...args) => {
+    return kvKey(['oauth', scope, ...args]);
+};
+const securityToken = {
+    set: async (userId, token) => {
+        return await kv.set(getKey(DbAuthScope.securityToken, userId), token);
+    },
+    get: async (userId) => {
+        return await kv.get(getKey(DbAuthScope.securityToken, userId));
+    },
+};
+const oauth = {
+    securityToken,
 };
 
 const db = Object.freeze({
     user,
+    oauth,
 });
 
 const getGithubUser = async (code) => {
@@ -115,15 +138,22 @@ async function handler(req, res) {
     let id = await db.user.oauth.get(userBrief.platform, userBrief.platformIdentifier);
     if (!id) {
         id = nanoid();
+        // save oauth link to id
+        await db.user.oauth.set(userBrief.platform, userBrief.platformIdentifier, id);
+        // save user detail
         await db.user.detail.set(id, {
             ...userBrief,
             id,
         });
     }
+    // set/refresh securityToken
+    const securityToken = nanoid();
+    await db.oauth.securityToken.set(id, securityToken);
     const token = Jwt.sign({
         user: {
             id,
         },
+        securityToken,
     }, getEnv().JWT_KEY);
     const redirectUrl = `${clientHost}/user/login?` +
         Qs.stringify({
