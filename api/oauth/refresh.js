@@ -1,6 +1,5 @@
-import { omit } from 'lodash-es';
 import Jwt from 'jsonwebtoken';
-import 'nanoid';
+import { nanoid } from 'nanoid';
 import { kv } from '@vercel/kv';
 
 const handlerBuilder = (handler, plugins) => {
@@ -30,6 +29,15 @@ const handlerBuilder = (handler, plugins) => {
     };
 };
 
+const cors = {
+    run: async (req, res) => {
+        if (req.method === 'OPTIONS') {
+            return res.status(200).end();
+        }
+        return undefined;
+    },
+};
+
 const kvKey = (keys) => (typeof keys === 'string' ? [keys] : keys).join(':');
 
 var DbUserScope;
@@ -55,7 +63,7 @@ const oauth$1 = {
         return await kv.set(getKey$1(DbUserScope.oauth, platform, identifier), value);
     },
 };
-const detail$1 = {
+const detail = {
     get: async (id) => {
         return await kv.get(getKey$1(DbUserScope.detail, id));
     },
@@ -66,7 +74,7 @@ const detail$1 = {
 // todo oauth:platform:id -> nanoid(), user info
 const user = {
     oauth: oauth$1,
-    detail: detail$1,
+    detail,
 };
 
 var DbAuthScope;
@@ -103,6 +111,23 @@ var RuntimeEnv;
 })(RuntimeEnv || (RuntimeEnv = {}));
 const getEnv = () => process.env;
 
+const generateJwt = async (id) => {
+    // set/refresh securityToken
+    const securityToken = nanoid();
+    await db.oauth.securityToken.set(id, securityToken);
+    const payload = {
+        user: {
+            id,
+        },
+        securityToken,
+    };
+    const authToken = Jwt.sign(payload, getEnv().JWT_KEY, { expiresIn: '3d' });
+    const refreshToken = Jwt.sign(payload, getEnv().JWT_KEY, { expiresIn: '7d' });
+    return {
+        authToken,
+        refreshToken,
+    };
+};
 const getJwtPayload = async (jwt) => {
     const { user, securityToken } = Jwt.verify(jwt, getEnv().JWT_KEY);
     const cacheSecurityToken = await db.oauth.securityToken.get(user.id);
@@ -113,36 +138,22 @@ const getJwtPayload = async (jwt) => {
     return user;
 };
 
-const auth = {
-    run: async (req, res, context) => {
-        const authorization = req.headers['x-authorization'];
-        try {
-            const user = await getJwtPayload(authorization);
-            context.user = user;
-            return undefined;
-        }
-        catch (_e) {
-            // default
-        }
-        return res.status(401).end();
-    },
-};
-
-const cors = {
-    run: async (req, res) => {
-        if (req.method === 'OPTIONS') {
-            return res.status(200).end();
-        }
-        return undefined;
-    },
-};
-
-async function handler(req, res, context) {
-    const result = await db.user.detail.get(context.user.id);
-    return result
-        ? res.json(omit(result, ['platformIdentifier']))
-        : res.status(401).end();
+async function handler(req, res) {
+    const refresh = req.headers['x-authorization-refresh'];
+    try {
+        const user = await getJwtPayload(refresh);
+        // regenerate token
+        const { authToken, refreshToken } = await generateJwt(user.id);
+        return res.json({
+            authToken,
+            refreshToken,
+        });
+    }
+    catch (_e) {
+        // default
+    }
+    return res.status(401).end();
 }
-var detail = handlerBuilder(handler, [cors, auth]);
+var refresh = handlerBuilder(handler, [cors]);
 
-export { detail as default };
+export { refresh as default };

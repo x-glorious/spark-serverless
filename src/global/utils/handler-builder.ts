@@ -11,7 +11,8 @@ export const handlerBuilder = (
 ) => {
   return async (req: VercelRequest, res: VercelResponse) => {
     const tasks = [...plugins, { run: handler }]
-    const context = {}
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const context = {} as any
     let stopIndex = -1
     let result: VercelResponse = res
 

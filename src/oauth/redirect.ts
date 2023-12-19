@@ -2,12 +2,12 @@ import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { OauthPlatform } from '@/global/types/oauth'
 import { nanoid } from 'nanoid'
 import axios from 'axios'
-import Jwt from 'jsonwebtoken'
 import { getEnv } from '@/global/utils/env'
 import { clientHost } from '@/global/utils/client'
 import { UserDetail } from '@/global/db/user'
 import { db } from '@/global/db'
 import Qs from 'qs'
+import { generateJwt } from '@/global/utils/jwt'
 
 const getGithubUser = async (code: string): Promise<Omit<UserDetail, 'id'>> => {
   const tokenResponse = await axios({
@@ -61,7 +61,7 @@ const getGithubUser = async (code: string): Promise<Omit<UserDetail, 'id'>> => {
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  const { platform, code, back_to } = req.query
+  const { platform, code } = req.query
 
   let userBrief: Omit<UserDetail, 'id'> | undefined
 
@@ -89,25 +89,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     })
   }
 
-  // set/refresh securityToken
-  const securityToken = nanoid()
-  await db.oauth.securityToken.set(id, securityToken)
-
-  const token = Jwt.sign(
-    {
-      user: {
-        id,
-      },
-      securityToken,
-    },
-    getEnv().JWT_KEY,
-  )
+  const { authToken, refreshToken } = await generateJwt(id)
 
   const redirectUrl =
-    `${clientHost}/user/login?` +
+    `${clientHost}/oauth/callback?` +
     Qs.stringify({
-      back: back_to,
-      token,
+      ['auth-token']: authToken,
+      ['refresh-token']: refreshToken,
     })
 
   return res.redirect(redirectUrl)

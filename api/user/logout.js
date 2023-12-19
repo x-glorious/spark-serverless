@@ -1,9 +1,11 @@
 import Jwt from 'jsonwebtoken';
+import 'nanoid';
 import { kv } from '@vercel/kv';
 
 const handlerBuilder = (handler, plugins) => {
     return async (req, res) => {
         const tasks = [...plugins, { run: handler }];
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const context = {};
         let stopIndex = -1;
         let result = res;
@@ -26,13 +28,6 @@ const handlerBuilder = (handler, plugins) => {
         return result;
     };
 };
-
-var RuntimeEnv;
-(function (RuntimeEnv) {
-    RuntimeEnv["dev"] = "development";
-    RuntimeEnv["pro"] = "production";
-})(RuntimeEnv || (RuntimeEnv = {}));
-const getEnv = () => process.env;
 
 const kvKey = (keys) => (typeof keys === 'string' ? [keys] : keys).join(':');
 
@@ -100,17 +95,28 @@ const db = Object.freeze({
     oauth,
 });
 
+var RuntimeEnv;
+(function (RuntimeEnv) {
+    RuntimeEnv["dev"] = "development";
+    RuntimeEnv["pro"] = "production";
+})(RuntimeEnv || (RuntimeEnv = {}));
+const getEnv = () => process.env;
+
+const getJwtPayload = async (jwt) => {
+    const { user, securityToken } = Jwt.verify(jwt, getEnv().JWT_KEY);
+    const cacheSecurityToken = await db.oauth.securityToken.get(user.id);
+    // check security token to disable abandoned jwt token
+    if (cacheSecurityToken !== securityToken) {
+        throw new Error();
+    }
+    return user;
+};
+
 const auth = {
     run: async (req, res, context) => {
         const authorization = req.headers['x-authorization'];
         try {
-            const { user, securityToken } = Jwt.verify(authorization, getEnv().JWT_KEY);
-            const cacheSecurityToken = await db.oauth.securityToken.get(user.id);
-            // check security token to disable abandoned jwt token
-            if (cacheSecurityToken !== securityToken) {
-                return res.status(401).end();
-            }
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const user = await getJwtPayload(authorization);
             context.user = user;
             return undefined;
         }

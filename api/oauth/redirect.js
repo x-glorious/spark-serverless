@@ -1,8 +1,8 @@
 import { nanoid } from 'nanoid';
 import axios from 'axios';
-import Jwt from 'jsonwebtoken';
 import { kv } from '@vercel/kv';
 import Qs from 'qs';
+import Jwt from 'jsonwebtoken';
 
 var OauthPlatform;
 (function (OauthPlatform) {
@@ -86,6 +86,24 @@ const db = Object.freeze({
     oauth,
 });
 
+const generateJwt = async (id) => {
+    // set/refresh securityToken
+    const securityToken = nanoid();
+    await db.oauth.securityToken.set(id, securityToken);
+    const payload = {
+        user: {
+            id,
+        },
+        securityToken,
+    };
+    const authToken = Jwt.sign(payload, getEnv().JWT_KEY, { expiresIn: '3d' });
+    const refreshToken = Jwt.sign(payload, getEnv().JWT_KEY, { expiresIn: '7d' });
+    return {
+        authToken,
+        refreshToken,
+    };
+};
+
 const getGithubUser = async (code) => {
     const tokenResponse = await axios({
         method: 'post',
@@ -130,7 +148,7 @@ const getGithubUser = async (code) => {
     };
 };
 async function handler(req, res) {
-    const { platform, code, back_to } = req.query;
+    const { platform, code } = req.query;
     let userBrief;
     if (platform === OauthPlatform.github) {
         userBrief = await getGithubUser(code);
@@ -146,19 +164,11 @@ async function handler(req, res) {
             id,
         });
     }
-    // set/refresh securityToken
-    const securityToken = nanoid();
-    await db.oauth.securityToken.set(id, securityToken);
-    const token = Jwt.sign({
-        user: {
-            id,
-        },
-        securityToken,
-    }, getEnv().JWT_KEY);
-    const redirectUrl = `${clientHost}/user/login?` +
+    const { authToken, refreshToken } = await generateJwt(id);
+    const redirectUrl = `${clientHost}/oauth/callback?` +
         Qs.stringify({
-            back: back_to,
-            token,
+            ['auth-token']: authToken,
+            ['refresh-token']: refreshToken,
         });
     return res.redirect(redirectUrl);
 }

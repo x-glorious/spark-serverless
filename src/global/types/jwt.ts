@@ -1,6 +1,5 @@
-export interface JwtPayload {
-  user: {
-    id: string
-  }
+import { OAuthContext } from './oauth'
+
+export interface JwtPayload extends Required<OAuthContext> {
   securityToken: string
 }
